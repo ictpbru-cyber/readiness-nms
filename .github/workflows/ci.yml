@@ -1,0 +1,59 @@
+name: CI & Build Verification
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install build flake8
+
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=Old_PHP
+
+    - name: Test Database Seeding & Initialization
+      run: |
+        python seed.py
+
+    - name: Test Jinja2 Templates Compilation
+      run: |
+        python -c "
+        import sys
+        sys.path.insert(0, '.')
+        from app.routes.web import templates
+        template_list = [
+            'index.html', 'network.html', 'server.html', 'service.html',
+            'device_detail.html', 'analytics.html', 'security_audit.html',
+            'admin/devices.html', 'admin/servers.html', 'admin/services.html',
+            'admin/users.html', 'admin/oid_profiles.html', 'admin/interfaces.html',
+            'admin/snmp_tester.html'
+        ]
+        for name in template_list:
+            templates.get_template(name)
+        print('All templates compiled OK')
+        "
+
+    - name: Build Wheel & Source Distribution
+      run: |
+        python -m build

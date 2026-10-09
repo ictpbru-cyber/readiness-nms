@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  readiness-nms:
+    build: .
+    container_name: readiness-nms
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=Readiness NMS
+      - SECRET_KEY=docker_secure_random_key_replace_in_prod
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=8000
+      - POLL_INTERVAL_SECONDS=60
+      - DATABASE_URL=sqlite:////data/readiness.db
+    volumes:
+      - nms_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  nms_data:
+    driver: local

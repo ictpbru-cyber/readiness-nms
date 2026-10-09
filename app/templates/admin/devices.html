@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Network Devices | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-router text-primary"></i> Manage Network Devices</h4>
+        <p class="text-muted small mb-0">Add, edit, or delete monitored switches and routers</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+            <i class="bi bi-plus-lg"></i> Add New Device
+        </button>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+        <span class="small fw-bold text-muted"><i class="bi bi-hdd-stack"></i> Device Roster ({{ devices|length }})</span>
+        <span class="table-scroll-hint"><i class="bi bi-arrow-left-right"></i> เลื่อนดูข้อมูล</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Device Name</th>
+                        <th class="d-none d-md-table-cell">Community</th>
+                        <th class="d-none d-lg-table-cell">Manufacturer</th>
+                        <th class="d-none d-sm-table-cell">MIB Profile</th>
+                        <th>Status</th>
+                        <th class="d-none d-xl-table-cell">Location</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if devices %}
+                        {% for dev in devices %}
+                        <tr>
+                            <td><code>{{ dev.ipaddress }}</code></td>
+                            <td class="fw-bold">{{ dev.sys_name or 'Unnamed' }}</td>
+                            <td class="d-none d-md-table-cell"><code>{{ dev.community }}</code></td>
+                            <td class="d-none d-lg-table-cell">{{ dev.manufacturer }}</td>
+                            <td class="d-none d-sm-table-cell">
+                                <span class="badge bg-info-subtle text-dark border">{{ dev.profile_name or 'Cisco Systems' }}</span>
+                            </td>
+                            <td>
+                                {% if dev.status == 1 %}
+                                    <span class="badge bg-success">UP</span>
+                                {% else %}
+                                    <span class="badge bg-danger">DOWN</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-xl-table-cell">{{ dev.sys_location or '-' }}</td>
+                            <td class="text-end text-nowrap">
+                                <a href="/admin/devices/{{ dev.ipaddress }}/interfaces" class="btn btn-sm btn-outline-primary me-1" title="Select and configure interfaces to monitor">
+                                    <i class="bi bi-hdd-network"></i> <span class="d-none d-sm-inline">Interfaces</span>
+                                    {% if dev.interfaces %}
+                                        {% set active_count = dev.interfaces | selectattr('is_monitored', 'equalto', 1) | list | length %}
+                                        <span class="badge {% if active_count > 0 %}bg-success{% else %}bg-secondary{% endif %} ms-1">{{ active_count }}/{{ dev.interfaces|length }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary ms-1">0</span>
+                                    {% endif %}
+                                </a>
+                                <form action="/admin/devices/delete" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete device {{ dev.ipaddress }}?');">
+                                    <input type="hidden" name="ipaddress" value="{{ dev.ipaddress }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">No devices found.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Device -->
+<div class="modal fade" id="addDeviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Network Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/devices/add" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">IP Address <span class="text-danger">*</span></label>
+                        <input type="text" name="ipaddress" class="form-control" placeholder="e.g. 192.168.1.1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Device Name</label>
+                        <input type="text" name="sys_name" class="form-control" placeholder="e.g. Core-Switch-01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">SNMP Community String <span class="text-danger">*</span></label>
+                        <input type="text" name="community" class="form-control" value="public" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Manufacturer</label>
+                        <input type="text" name="manufacturer" class="form-control" placeholder="e.g. Cisco Systems, Huawei, MikroTik">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">MIB / OID Profile</label>
+                        <select name="profile_name" class="form-select">
+                            {% if profiles %}
+                                {% for prof in profiles %}
+                                <option value="{{ prof.name }}">{{ prof.name }} ({{ prof.vendor }})</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="Cisco Systems">Cisco Systems</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Location</label>
+                        <input type="text" name="sys_location" class="form-control" placeholder="e.g. Server Room Rack A">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

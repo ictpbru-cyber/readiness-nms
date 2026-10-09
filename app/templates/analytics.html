@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Network Performance Analytics | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow text-primary"></i> Network Performance Analytics</h3>
+        <p class="text-muted small mb-0">Live bandwidth utilization, RTT latency distribution, jitter & bottleneck diagnosis</p>
+    </div>
+    <form action="/analytics/refresh" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-primary d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-arrow-repeat"></i> Re-analyze Network
+        </button>
+    </form>
+</div>
+
+<!-- Performance KPI Metric Cards -->
+<div class="row g-2 g-sm-3 mb-4">
+    <!-- Network Quality Score -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle {% if perf.score >= 80 %}bg-success{% elif perf.score >= 60 %}bg-warning{% else %}bg-danger{% endif %} bg-opacity-10 p-2 p-sm-3 me-2 me-sm-3 text-center kpi-icon-box d-flex align-items-center justify-content-center">
+                    <span class="h4 fw-bold {% if perf.score >= 80 %}text-success{% elif perf.score >= 60 %}text-warning{% else %}text-danger{% endif %} d-block mb-0">{{ perf.score }}</span>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Quality Score</div>
+                    <div class="h5 fw-bold mb-0 kpi-value">
+                        {% if perf.score >= 80 %}
+                            <span class="text-success">Optimal</span>
+                        {% elif perf.score >= 60 %}
+                            <span class="text-warning">Fair</span>
+                        {% else %}
+                            <span class="text-danger">Degraded</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted mt-1 kpi-subtext text-truncate">Index 0 - 100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Latency & Jitter -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3">
+                <div class="text-muted small fw-medium text-truncate kpi-title">Latency (RTT)</div>
+                <div class="h3 fw-bold text-primary mb-0 kpi-value">{{ perf.avg_latency }} <span class="fs-6 fw-normal text-muted">ms</span></div>
+                <div class="small text-muted mt-1 kpi-subtext text-truncate">
+                    <span>Min: <strong>{{ perf.min_latency }}</strong></span> &bull;
+                    <span>Jitter: <strong>&plusmn;{{ perf.jitter }}</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Packet Loss / Probe Drop -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3">
+                <div class="text-muted small fw-medium text-truncate kpi-title">Probe Loss</div>
+                <div class="h3 fw-bold {% if perf.packet_loss_pct > 10 %}text-danger{% elif perf.packet_loss_pct > 0 %}text-warning{% else %}text-success{% endif %} mb-0 kpi-value">
+                    {{ perf.packet_loss_pct }}%
+                </div>
+                <div class="small text-muted mt-1 kpi-subtext text-truncate">
+                    {% if perf.packet_loss_pct == 0 %}
+                        <span class="text-success"><i class="bi bi-shield-check"></i> 100% Delivery</span>
+                    {% else %}
+                        <span>{{ perf.failed_probes }} of {{ perf.total_probes }} failed</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bandwidth Volume (Total Monitored Traffic) -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3">
+                <div class="text-muted small fw-medium text-truncate kpi-title">Monitored Volume</div>
+                <div class="h3 fw-bold text-dark mb-0 kpi-value">{{ (perf.total_in_mb + perf.total_out_mb)|round(1) }} <span class="fs-6 fw-normal text-muted">MB</span></div>
+                <div class="small text-muted mt-1 kpi-subtext text-truncate">
+                    <span class="text-success">In: {{ perf.total_in_mb }}M</span> &bull;
+                    <span class="text-primary">Out: {{ perf.total_out_mb }}M</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Charts -->
+<div class="row g-4 mb-4">
+    <!-- Latency Distribution Chart -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-speedometer2 text-info"></i> Latency & Response Time per Target</span>
+                <span class="small text-muted">Milliseconds (ms)</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container-responsive">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CPU Load Across Devices -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-cpu text-warning"></i> Network Hardware CPU Load Distribution</span>
+                <span class="small text-muted">Utilization (%)</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container-responsive">
+                    <canvas id="cpuChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottleneck Diagnosis & Optimization Advice -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3 fw-bold">
+        <i class="bi bi-tools text-danger"></i> Bottleneck Diagnosis & Performance Insights
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Status</th>
+                        <th>Component</th>
+                        <th>Observed Metric</th>
+                        <th>Potential Impact</th>
+                        <th>Optimization Advice</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in perf.bottlenecks %}
+                    <tr>
+                        <td>
+                            {% if item.severity == 'CRITICAL' %}
+                                <span class="badge bg-danger">CRITICAL</span>
+                            {% elif item.severity == 'WARNING' %}
+                                <span class="badge bg-warning text-dark">WARNING</span>
+                            {% else %}
+                                <span class="badge bg-success">OPTIMAL</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">{{ item.component }}</td>
+                        <td><code>{{ item.metric }}</code></td>
+                        <td class="small text-secondary">{{ item.impact }}</td>
+                        <td class="small text-dark">{{ item.recommendation }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Top Traffic Interfaces Table -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-3 fw-bold">
+        <i class="bi bi-arrow-left-right text-primary"></i> Top Active Network Interfaces (Traffic & Errors)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Interface</th>
+                        <th>Host IP</th>
+                        <th>Status</th>
+                        <th>Link Speed</th>
+                        <th>Inbound Volume</th>
+                        <th>Outbound Volume</th>
+                        <th>CRC / Packet Errors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if perf.top_interfaces %}
+                        {% for inf in perf.top_interfaces %}
+                        <tr>
+                            <td class="fw-bold">{{ inf.name }}</td>
+                            <td><code>{{ inf.device }}</code></td>
+                            <td>
+                                <span class="badge {% if inf.status == 'Up' %}bg-success{% else %}bg-danger{% endif %}">{{ inf.status }}</span>
+                            </td>
+                            <td>{{ (inf.speed|int / 1000000)|int if inf.speed else 0 }} Mbps</td>
+                            <td><span class="text-success fw-medium">&darr; {{ inf.in_mb }} MB</span></td>
+                            <td><span class="text-primary fw-medium">&uarr; {{ inf.out_mb }} MB</span></td>
+                            <td>
+                                {% if inf.errors > 0 %}
+                                    <span class="badge bg-danger">{{ inf.errors }} Errors</span>
+                                {% else %}
+                                    <span class="text-muted small">0 Errors</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                No interface statistics recorded yet.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 1. Latency Chart
+    const latencyLabels = {{ perf.chart_services.labels | tojson }};
+    const latencyData = {{ perf.chart_services.rtt | tojson }};
+
+    new Chart(document.getElementById('latencyChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: latencyLabels.length ? latencyLabels : ['No targets'],
+            datasets: [{
+                label: 'Response Time (ms)',
+                data: latencyData.length ? latencyData : [0],
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Milliseconds (ms)' } }
+            }
+        }
+    });
+
+    // 2. CPU Load Chart
+    const cpuLabels = {{ perf.chart_devices.labels | tojson }};
+    const cpuData = {{ perf.chart_devices.cpus | tojson }};
+
+    new Chart(document.getElementById('cpuChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: cpuLabels.length ? cpuLabels : ['No devices'],
+            datasets: [{
+                label: 'CPU Load (%)',
+                data: cpuData.length ? cpuData : [0],
+                backgroundColor: cpuData.map(v => v >= 80 ? 'rgba(255, 99, 132, 0.8)' : (v >= 50 ? 'rgba(255, 205, 86, 0.8)' : 'rgba(75, 192, 192, 0.8)')),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percent (%)' } }
+            }
+        }
+    });
+</script>
+{% endblock %}

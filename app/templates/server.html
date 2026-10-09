@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}Servers, Databases & Web Health | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-server text-success"></i> Server & Application Observability</h3>
+        <p class="text-muted small mb-0">OS Infrastructure, Multi-Database Engines (Oracle, MySQL, PostgreSQL, Redis) & Web Server Health</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form action="/servers/check-now" method="post">
+            <button type="submit" class="btn btn-outline-success d-flex align-items-center gap-1 shadow-sm">
+                <i class="bi bi-arrow-repeat"></i> Probe All Now
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="row g-2 g-sm-3 mb-4">
+    <!-- OS Hosts -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle bg-success bg-opacity-10 p-2 p-sm-3 text-success me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-hdd-rack fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Host Servers</div>
+                    <div class="h3 fw-bold mb-0 kpi-value">{{ servers|length }}</div>
+                    <div class="small mt-1 kpi-subtext">
+                        <span class="text-success fw-semibold"><i class="bi bi-arrow-up-circle"></i> {{ srv_up }}</span>
+                        <span class="text-danger fw-semibold ms-1"><i class="bi bi-arrow-down-circle"></i> {{ srv_down }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Databases -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-2 p-sm-3 text-primary me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-database-fill fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Databases</div>
+                    <div class="h3 fw-bold mb-0 kpi-value">{{ databases|length }}</div>
+                    <div class="small mt-1 kpi-subtext">
+                        <span class="text-success fw-semibold"><i class="bi bi-check-circle-fill"></i> {{ db_online }}</span>
+                        <span class="text-danger fw-semibold ms-1"><i class="bi bi-x-circle-fill"></i> {{ db_offline }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Web Servers -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle bg-info bg-opacity-10 p-2 p-sm-3 text-info me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-globe fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Web Apps</div>
+                    <div class="h3 fw-bold mb-0 kpi-value">{{ web_targets|length }}</div>
+                    <div class="small mt-1 kpi-subtext">
+                        <span class="text-success fw-semibold"><i class="bi bi-check-all"></i> {{ web_healthy }}</span>
+                        <span class="text-danger fw-semibold ms-1"><i class="bi bi-exclamation-circle"></i> {{ web_critical }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SSL Expiry Alert -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle {% if ssl_expiring > 0 %}bg-warning{% else %}bg-secondary{% endif %} bg-opacity-10 p-2 p-sm-3 {% if ssl_expiring > 0 %}text-warning{% else %}text-secondary{% endif %} me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-shield-check fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">SSL Warning</div>
+                    <div class="h3 fw-bold mb-0 kpi-value {% if ssl_expiring > 0 %}text-warning{% endif %}">{{ ssl_expiring }}</div>
+                    <div class="small text-muted mt-1 kpi-subtext text-truncate">&lt; 30 days left</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs Navigation with Horizontal Scroll for Mobile -->
+<ul class="nav nav-pills mb-3 gap-2 flex-nowrap overflow-x-auto pb-1" id="serverTab" role="tablist">
+    <li class="nav-item text-nowrap" role="presentation">
+        <button class="nav-link active fw-semibold" id="db-tab" data-bs-toggle="tab" data-bs-target="#tab-db" type="button" role="tab">
+            <i class="bi bi-database me-1"></i> Database Systems ({{ databases|length }})
+        </button>
+    </li>
+    <li class="nav-item text-nowrap" role="presentation">
+        <button class="nav-link fw-semibold" id="web-tab" data-bs-toggle="tab" data-bs-target="#tab-web" type="button" role="tab">
+            <i class="bi bi-globe me-1"></i> Web & SSL ({{ web_targets|length }})
+        </button>
+    </li>
+    <li class="nav-item text-nowrap" role="presentation">
+        <button class="nav-link fw-semibold" id="os-tab" data-bs-toggle="tab" data-bs-target="#tab-os" type="button" role="tab">
+            <i class="bi bi-hdd-rack me-1"></i> Host & OS ({{ servers|length }})
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="serverTabContent">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: DATABASES (Oracle, MySQL, etc.) -->
+    <!-- ========================================== -->
+    <div class="tab-pane fade show active" id="tab-db" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0 fw-bold"><i class="bi bi-database-fill text-primary"></i> Database Engine Performance & Health</h6>
+                {% if current_user and current_user.status == 'ADMIN' %}
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addDbModal">
+                    <i class="bi bi-plus-lg"></i> Add Database Target
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Database Name</th>
+                                <th>Engine</th>
+                                <th>Host / Endpoint</th>
+                                <th>Status</th>
+                                <th>Connection Latency</th>
+                                <th>Version / Handshake Banner</th>
+                                <th>Notes</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if databases %}
+                                {% for d in databases %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ d.name }}</td>
+                                    <td>
+                                        {% if 'ORACLE' in d.db_type.upper() %}
+                                            <span class="badge bg-danger text-white"><i class="bi bi-box-fill"></i> Oracle DB</span>
+                                        {% elif 'MYSQL' in d.db_type.upper() %}
+                                            <span class="badge bg-primary text-white"><i class="bi bi-database"></i> MySQL / MariaDB</span>
+                                        {% elif 'POSTGRE' in d.db_type.upper() %}
+                                            <span class="badge bg-info text-dark"><i class="bi bi-database-fill-gear"></i> PostgreSQL</span>
+                                        {% elif 'REDIS' in d.db_type.upper() %}
+                                            <span class="badge bg-danger-subtle text-danger border"><i class="bi bi-lightning-charge-fill"></i> Redis</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary text-white">{{ d.db_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><code>{{ d.host }}:{{ d.port }}</code></td>
+                                    <td>
+                                        {% if d.status == 'ONLINE' %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                <i class="bi bi-check-circle-fill"></i> ONLINE
+                                            </span>
+                                        {% elif d.status == 'DEGRADED' %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">
+                                                <i class="bi bi-exclamation-triangle-fill"></i> DEGRADED
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                                <i class="bi bi-x-circle-fill"></i> OFFLINE
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if d.status != 'OFFLINE' %}
+                                            <span class="badge bg-light text-dark border">{{ d.latency_ms }} ms</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small text-secondary">{{ d.version_info or 'Unknown' }}</td>
+                                    <td class="small text-muted text-truncate" style="max-width: 180px;">{{ d.details or '-' }}</td>
+                                    <td class="text-end">
+                                        {% if current_user and current_user.status == 'ADMIN' %}
+                                        <form action="/servers/db/delete" method="post" class="d-inline" onsubmit="return confirm('Delete database target {{ d.name }}?');">
+                                            <input type="hidden" name="db_id" value="{{ d.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">No databases configured for monitoring.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: WEB SERVERS HEALTH & SSL -->
+    <!-- ========================================== -->
+    <div class="tab-pane fade" id="tab-web" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0 fw-bold"><i class="bi bi-globe text-info"></i> Web Server Health, HTTP Codes & SSL/TLS Verification</h6>
+                {% if current_user and current_user.status == 'ADMIN' %}
+                <button type="button" class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#addWebModal">
+                    <i class="bi bi-plus-lg"></i> Add Web Server
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Web Service</th>
+                                <th>URL</th>
+                                <th>HTTP Status</th>
+                                <th>TTFB Latency</th>
+                                <th>Server Banner</th>
+                                <th>SSL Certificate Status</th>
+                                <th>Security Headers</th>
+                                <th>Overall Health</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if web_targets %}
+                                {% for w in web_targets %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ w.name }}</td>
+                                    <td><a href="{{ w.url }}" target="_blank" class="text-decoration-none small"><code>{{ w.url }}</code> <i class="bi bi-box-arrow-up-right"></i></a></td>
+                                    <td>
+                                        {% if w.status_code == 200 %}
+                                            <span class="badge bg-success">{{ w.status_code }} OK</span>
+                                        {% elif 300 <= w.status_code < 400 %}
+                                            <span class="badge bg-info text-dark">{{ w.status_code }} REDIRECT</span>
+                                        {% elif 400 <= w.status_code < 500 %}
+                                            <span class="badge bg-warning text-dark">{{ w.status_code }} CLIENT ERR</span>
+                                        {% elif w.status_code >= 500 %}
+                                            <span class="badge bg-danger">{{ w.status_code }} SERVER ERR</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">FAIL</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if w.latency_ms > 0 %}
+                                            <span class="badge bg-light text-dark border">{{ w.latency_ms }} ms</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small text-secondary">{{ w.server_software }}</td>
+                                    <td>
+                                        {% if w.ssl_days_left >= 30 %}
+                                            <span class="badge bg-success-subtle text-success border">
+                                                <i class="bi bi-shield-check"></i> {{ w.ssl_days_left }} days left
+                                            </span>
+                                            <div class="text-muted" style="font-size: 0.75rem;">{{ w.ssl_issuer }}</div>
+                                        {% elif w.ssl_days_left >= 0 %}
+                                            <span class="badge bg-warning-subtle text-warning border">
+                                                <i class="bi bi-exclamation-triangle"></i> Expiring in {{ w.ssl_days_left }} days!
+                                            </span>
+                                            <div class="text-muted" style="font-size: 0.75rem;">{{ w.ssl_issuer }}</div>
+                                        {% else %}
+                                            <span class="text-muted small">Plain HTTP (No SSL)</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-secondary border">
+                                            {{ w.security_headers_count }}/4 Standards
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if w.health_status == 'EXCELLENT' %}
+                                            <span class="badge bg-success"><i class="bi bi-stars"></i> EXCELLENT</span>
+                                        {% elif w.health_status == 'GOOD' %}
+                                            <span class="badge bg-primary">GOOD</span>
+                                        {% elif w.health_status == 'WARNING' %}
+                                            <span class="badge bg-warning text-dark">WARNING</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">CRITICAL</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if current_user and current_user.status == 'ADMIN' %}
+                                        <form action="/servers/web/delete" method="post" class="d-inline" onsubmit="return confirm('Delete web target {{ w.name }}?');">
+                                            <input type="hidden" name="web_id" value="{{ w.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4 text-muted">No web servers configured for monitoring.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: HOST & OS INFRASTRUCTURE -->
+    <!-- ========================================== -->
+    <div class="tab-pane fade" id="tab-os" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0 fw-bold"><i class="bi bi-hdd-rack text-success"></i> Host Resources MIB (Storage & CPU Load)</h6>
+                {% if current_user and current_user.status == 'ADMIN' %}
+                <a href="/admin/servers" class="btn btn-sm btn-success">
+                    <i class="bi bi-plus-circle"></i> Manage Server Hosts
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Server Name</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th>CPU Load</th>
+                                <th>Storage Utilization</th>
+                                <th>Uptime</th>
+                                <th>Last Checked</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if servers %}
+                                {% for srv in servers %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">{{ srv.sys_name or 'Server ' ~ srv.ipaddress }}</div>
+                                        <div class="text-muted small text-truncate" style="max-width: 250px;">{{ srv.sys_description }}</div>
+                                    </td>
+                                    <td><code>{{ srv.ipaddress }}</code></td>
+                                    <td>
+                                        {% if srv.status == 1 %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle-fill"></i> UP</span>
+                                        {% else %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-x-circle-fill"></i> DOWN</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if srv.status == 1 %}
+                                            <span class="badge bg-secondary">{{ srv.cpu_load }}%</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="min-width: 180px;">
+                                        {% if srv.storage_size_mb and srv.storage_size_mb > 0 %}
+                                            {% set pct = (srv.storage_used_mb / srv.storage_size_mb * 100)|round(1) %}
+                                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                                <span>{{ (srv.storage_used_mb / 1024)|round(1) }} GB used</span>
+                                                <span>{{ pct }}%</span>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar {% if pct > 85 %}bg-danger{% elif pct > 70 %}bg-warning{% else %}bg-primary{% endif %}" style="width: {{ pct }}%;"></div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted small">No disk data</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small text-muted">{{ srv.sys_uptime or '-' }}</td>
+                                    <td class="small text-muted">{{ srv.last_updated.strftime('%H:%M:%S') if srv.last_updated else '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">No servers registered yet.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal: Add Database Target -->
+<div class="modal fade" id="addDbModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Monitored Database Target</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/servers/db/add" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Database Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. ERP Primary Oracle DB" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Database Engine Type <span class="text-danger">*</span></label>
+                        <select name="db_type" class="form-select" id="dbTypeSelect" onchange="autoFillDbPort()">
+                            <option value="MySQL">MySQL / MariaDB (Port 3306)</option>
+                            <option value="Oracle">Oracle Database (Port 1521)</option>
+                            <option value="PostgreSQL">PostgreSQL (Port 5432)</option>
+                            <option value="MSSQL">Microsoft SQL Server (Port 1433)</option>
+                            <option value="Redis">Redis In-Memory Store (Port 6379)</option>
+                            <option value="MongoDB">MongoDB (Port 27017)</option>
+                            <option value="Other">Other Database</option>
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-8">
+                            <label class="form-label small fw-semibold">Host / IP <span class="text-danger">*</span></label>
+                            <input type="text" name="host" class="form-control" placeholder="e.g. 192.168.1.100" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold">Port <span class="text-danger">*</span></label>
+                            <input type="number" name="port" id="dbPortInput" class="form-control" value="3306" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Details / Description</label>
+                        <input type="text" name="details" class="form-control" placeholder="e.g. Student Registration & ERP Core DB">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save & Probe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Web Target -->
+<div class="modal fade" id="addWebModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Monitored Web Server Target</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/servers/web/add" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Web Server Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Faculty Web Portal" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Target URL <span class="text-danger">*</span></label>
+                        <input type="url" name="url" class="form-control" placeholder="https://example.pbru.ac.th" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info text-white">Save & Inspect</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function autoFillDbPort() {
+        const select = document.getElementById('dbTypeSelect');
+        const portInput = document.getElementById('dbPortInput');
+        const map = {
+            'MySQL': 3306,
+            'Oracle': 1521,
+            'PostgreSQL': 5432,
+            'MSSQL': 1433,
+            'Redis': 6379,
+            'MongoDB': 27017,
+            'Other': 3306
+        };
+        if (map[select.value]) {
+            portInput.value = map[select.value];
+        }
+    }
+</script>
+{% endblock %}

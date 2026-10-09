@@ -1,0 +1,118 @@
+<?php
+	session_start();
+	if($_SESSION['UserID'] == "")
+	{
+		echo "Please Login!";
+		exit();
+	}
+
+	if($_SESSION['Status'] != "ADMIN")
+	{
+		echo "This page for Admin only!";
+		exit();
+	}	
+	
+	mysql_connect("localhost","nms","permissions");
+	mysql_select_db("readiness");
+	$strSQL = "SELECT * FROM member WHERE UserID = '".$_SESSION['UserID']."' ";
+	$objQuery = mysql_query($strSQL);
+	$objResult = mysql_fetch_array($objQuery);
+?>
+
+<!doctype html>
+<!--[if lt IE 7]> <html class="ie6 oldie"> <![endif]-->
+<!--[if IE 7]>    <html class="ie7 oldie"> <![endif]-->
+<!--[if IE 8]>    <html class="ie8 oldie"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="">
+<!--<![endif]-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title></title>
+<link href="boilerplate.css" rel="stylesheet" type="text/css">
+<link href="css/fluidGird.css" rel="stylesheet" type="text/css">
+<!-- 
+To learn more about the conditional comments around the html tags at the top of the file:
+paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/
+
+Do the following if you're using your customized build of modernizr (http://www.modernizr.com/):
+* insert the link to your js here
+* remove the link below to the html5shiv
+* add the "no-js" class to the html tags at the top
+* you can also remove the link to respond.min.js if you included the MQ Polyfill in your modernizr build 
+-->
+<!--[if lt IE 9]>
+<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+<script src="respond.min.js"></script>
+
+<script language="javascript" src="js/jquery-1.2.6.min.js"></script>  
+<script type="text/javascript">  
+function chk_form(){  
+    $(":input + span.require").remove();  
+    $(":input").each(function(){  
+        $(this).each(function(){      
+            if($(this).val()==""){  
+                $(this).after("<span class=require>« จำเป็นต้องกรอก</span>");  
+            }  
+        });  
+    });  
+    if($(":input").next().is(".require")==false){  
+        return true;  
+    }else{  
+        return false;  
+    }  
+}  
+</script>  
+
+<style type="text/css">  
+.require{  
+    height:20px;  
+    color:#FF0000;  
+    padding-left:5px;  
+    padding-right:5px;  
+    font-size:12px;  
+    line-height:15px;  
+    width:100px;  
+    float:none;  
+}  
+</style>
+
+</head>
+<body>
+
+<div class="gridContainer clearfix">
+  <div id="LayoutDiv1">
+  <br>
+	| <a href=admin.php>Home</a> | <a href=server.php>Server Monitor</a> | <a href=network.php>Network Monitor</a> | <a href=status-service.php>Service Monitor</a> |
+  <br>
+  <p align="left">
+  <form action="save_system_tcpudp.php" method="post" onsubmit="return chk_form()">
+    <table border="0" align="center">
+    	<tr>
+        	<td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td>
+        </tr>
+    	<tr>
+        	<td>Server{IP/Name}</td><td>:</td><td><input type="text" name="host" size="30" /></td>
+        	<td>Port</td><td>:</td><td><input type="text" name="port" size="5" /></td>
+    	</tr>
+        <tr>
+        	<td></td><td></td><td><input type="submit" value="Yes" name="yes" />&nbsp;<input type="reset" value="Reset" name="reset" /></td>
+        </tr>
+    </table>
+    </form>
+  </p>
+  
+  	<br><br>
+    <div class="footer">
+    <?php
+      	include 'getClientEnv.php';
+    ?>
+    </div>
+
+  
+  </div>
+</div>
+</body>
+</html>

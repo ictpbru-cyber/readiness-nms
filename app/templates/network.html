@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Network Devices | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-router text-primary"></i> Network Devices</h4>
+        <p class="text-muted small mb-0">Cisco / Switch / Router infrastructure status & SNMP metrics</p>
+    </div>
+    {% if current_user and current_user.status == 'ADMIN' %}
+    <a href="/admin/devices" class="btn btn-primary d-flex align-items-center gap-1">
+        <i class="bi bi-plus-circle"></i> Add Device
+    </a>
+    {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-2 py-sm-3 d-flex justify-content-between align-items-center">
+        <span class="fw-bold small text-muted text-uppercase">Monitored Hardware</span>
+        <span class="table-scroll-hint"><i class="bi bi-arrows-expand"></i> Swipe table</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="d-none d-sm-table-cell">#</th>
+                        <th>Device Name</th>
+                        <th>IP Address</th>
+                        <th>Status</th>
+                        <th class="d-none d-lg-table-cell">Manufacturer</th>
+                        <th>CPU Load</th>
+                        <th class="d-none d-md-table-cell">Memory</th>
+                        <th class="d-none d-lg-table-cell">Location</th>
+                        <th class="d-none d-xl-table-cell">Uptime</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if devices %}
+                        {% for dev in devices %}
+                        <tr>
+                            <td class="d-none d-sm-table-cell text-muted">{{ loop.index }}</td>
+                            <td>
+                                <a href="/device/{{ dev.ipaddress }}" class="fw-bold text-decoration-none text-dark d-block">
+                                    {{ dev.sys_name or 'Device ' ~ dev.ipaddress }}
+                                </a>
+                                <div class="text-muted small text-truncate d-none d-sm-block" style="max-width: 180px;">
+                                    {{ dev.sys_description }}
+                                </div>
+                            </td>
+                            <td><code>{{ dev.ipaddress }}</code></td>
+                            <td>
+                                {% if dev.status == 1 %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                        <i class="bi bi-check-circle-fill"></i> UP
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                        <i class="bi bi-x-circle-fill"></i> DOWN
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-lg-table-cell"><span class="badge bg-light text-dark border">{{ dev.manufacturer }}</span></td>
+                            <td>
+                                {% if dev.status == 1 %}
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 6px; width: 50px;">
+                                            <div class="progress-bar {% if dev.sys_cpu_load > 80 %}bg-danger{% elif dev.sys_cpu_load > 50 %}bg-warning{% else %}bg-success{% endif %}" 
+                                                 style="width: {{ dev.sys_cpu_load }}%;"></div>
+                                        </div>
+                                        <span class="small fw-semibold">{{ dev.sys_cpu_load }}%</span>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="small d-none d-md-table-cell">
+                                {% if dev.sys_memory_use or dev.sys_memory_free %}
+                                    <div>Used: {{ dev.sys_memory_use|int }}</div>
+                                    <div class="text-muted">Free: {{ dev.sys_memory_free|int }}</div>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted d-none d-lg-table-cell">{{ dev.sys_location or '-' }}</td>
+                            <td class="small text-muted d-none d-xl-table-cell">{{ dev.sys_uptime or '-' }}</td>
+                            <td class="text-end">
+                                <a href="/device/{{ dev.ipaddress }}" class="btn btn-sm btn-outline-primary text-nowrap">
+                                    <i class="bi bi-graph-up"></i> <span class="d-none d-sm-inline">Monitor</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center py-4 text-muted">
+                                No network devices found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

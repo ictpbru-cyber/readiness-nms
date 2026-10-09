@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}TCP/UDP Services | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-activity text-info"></i> Monitored Services</h4>
+        <p class="text-muted small mb-0">TCP Port Response & ICMP Ping status checks</p>
+    </div>
+    {% if current_user and current_user.status == 'ADMIN' %}
+    <a href="/admin/services" class="btn btn-info d-flex align-items-center gap-1">
+        <i class="bi bi-plus-circle"></i> Add Service
+    </a>
+    {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-2 py-sm-3 d-flex justify-content-between align-items-center">
+        <span class="fw-bold small text-muted text-uppercase">Service Endpoints</span>
+        <span class="table-scroll-hint"><i class="bi bi-arrows-expand"></i> Swipe table</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="d-none d-sm-table-cell">#</th>
+                        <th>Service Name</th>
+                        <th>Host / Server</th>
+                        <th>Port</th>
+                        <th>Service Status</th>
+                        <th>Response Time</th>
+                        <th class="d-none d-md-table-cell">ICMP (Ping)</th>
+                        <th class="d-none d-lg-table-cell">Last Checked</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if services %}
+                        {% for svc in services %}
+                        <tr>
+                            <td class="d-none d-sm-table-cell text-muted">{{ loop.index }}</td>
+                            <td>
+                                <span class="fw-bold">{{ svc.service_name or 'Service' }}</span>
+                            </td>
+                            <td><code>{{ svc.server }}</code></td>
+                            <td><span class="badge bg-light text-dark border">{{ svc.port }}</span></td>
+                            <td>
+                                {% if svc.status == 'respond' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                        <i class="bi bi-check-circle-fill"></i> RESPOND
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                        <i class="bi bi-x-circle-fill"></i> NOT RESPOND
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if svc.status == 'respond' %}
+                                    <span class="badge bg-light text-dark border fw-medium">{{ svc.responded_ms }} ms</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                {% if svc.icmp_status == 0 %}
+                                    <span class="text-success small fw-semibold"><i class="bi bi-check2"></i> Alive</span>
+                                {% else %}
+                                    <span class="text-danger small fw-semibold"><i class="bi bi-x"></i> Timeout</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted d-none d-lg-table-cell">{{ svc.last_updated.strftime('%H:%M:%S') if svc.last_updated else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                No services configured yet.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

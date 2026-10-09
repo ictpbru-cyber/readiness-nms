@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}{{ device.sys_name or device.ipaddress }} | Details{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="/network" class="btn btn-sm btn-outline-secondary mb-2">
+        <i class="bi bi-arrow-left"></i> Back to Network List
+    </a>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="fw-bold mb-0">{{ device.sys_name or 'Device Details' }}</h3>
+            <span class="text-muted"><code>{{ device.ipaddress }}</code> &bull; {{ device.manufacturer }}</span>
+        </div>
+        <div>
+            {% if device.status == 1 %}
+                <span class="badge bg-success fs-6 px-3 py-2"><i class="bi bi-check-circle-fill"></i> UP</span>
+            {% else %}
+                <span class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-x-circle-fill"></i> DOWN</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Device Properties Card -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white py-3 fw-bold">
+                <i class="bi bi-info-circle text-primary"></i> System Information
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted" style="width: 130px;">IP Address:</td>
+                            <td><code>{{ device.ipaddress }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">System OID:</td>
+                            <td class="small">{{ device.sys_oid or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">OS / IOS:</td>
+                            <td>{{ device.sys_ios or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Location:</td>
+                            <td>{{ device.sys_location or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Contact:</td>
+                            <td>{{ device.sys_contact or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">MIB Profile:</td>
+                            <td><span class="badge bg-primary-subtle text-primary border">{{ device.profile_name or 'Cisco Systems' }}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">System Uptime:</td>
+                            <td>{{ device.sys_uptime or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Last Checked:</td>
+                            <td class="small">{{ device.last_updated.strftime('%Y-%m-%d %H:%M:%S') if device.last_updated else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Description:</td>
+                            <td class="small text-muted">{{ device.sys_description or '-' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Card: CPU & Memory Trend -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-graph-up text-success"></i> CPU & Memory Utilization</span>
+                <span class="small text-muted">Recent Samples</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container-responsive">
+                    <canvas id="metricsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom OID Sensors & Telemetry Card -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-2 py-sm-3 d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-speedometer2 text-success"></i> Custom OID Telemetry & Hardware Sensors</span>
+        {% if current_user and current_user.status == 'ADMIN' %}
+        <a href="/admin/devices/{{ device.ipaddress }}/interfaces" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-sliders"></i> <span class="d-none d-sm-inline">Manage Sensors</span>
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body p-2 p-sm-3">
+        {% if device.custom_oids %}
+            <div class="row g-2 g-sm-3">
+                {% for sensor in device.custom_oids %}
+                <div class="col-12 col-sm-6 col-lg-4">
+                    <div class="p-3 rounded-3 bg-light border h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <span class="fw-bold text-dark text-truncate">{{ sensor.name }}</span>
+                            <span class="badge bg-success-subtle text-success border">Active</span>
+                        </div>
+                        <div class="h3 fw-bold text-primary mb-1">
+                            {{ sensor.last_value or '--' }} <span class="fs-6 text-muted fw-normal">{{ sensor.unit }}</span>
+                        </div>
+                        <div class="small text-muted font-monospace text-truncate" title="{{ sensor.oid }}">
+                            OID: {{ sensor.oid }}
+                        </div>
+                        <div class="small text-muted mt-1">
+                            Updated: {{ sensor.last_updated.strftime('%H:%M:%S') if sensor.last_updated else '-' }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-3 text-muted">
+                <i class="bi bi-info-circle me-1"></i> No custom OID sensors defined for this device.
+                {% if current_user and current_user.status == 'ADMIN' %}
+                <a href="/admin/devices/{{ device.ipaddress }}/interfaces" class="alert-link ms-1">Add custom sensors in Device Settings</a>.
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Network Interfaces Card -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-2 py-sm-3 d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-hdd-network text-info"></i> Network Interfaces & MIB Objects</span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="table-scroll-hint"><i class="bi bi-arrows-expand"></i> Swipe table</span>
+            {% if current_user and current_user.status == 'ADMIN' %}
+            <a href="/admin/devices/{{ device.ipaddress }}/interfaces" class="btn btn-sm btn-outline-primary text-nowrap">
+                <i class="bi bi-sliders"></i> <span class="d-none d-sm-inline">Configure</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="d-none d-sm-table-cell">Index</th>
+                        <th>Interface Name</th>
+                        <th>Speed</th>
+                        <th>Monitoring</th>
+                        <th class="d-none d-md-table-cell">Admin</th>
+                        <th>Oper Status</th>
+                        <th class="d-none d-md-table-cell">In Octets</th>
+                        <th class="d-none d-md-table-cell">Out Octets</th>
+                        <th>Errors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if device.interfaces %}
+                        {% for inf in device.interfaces %}
+                        <tr class="{% if inf.is_monitored != 1 %}opacity-75{% endif %}">
+                            <td class="d-none d-sm-table-cell"><code>#{{ inf.infid }}</code></td>
+                            <td class="fw-bold">{{ inf.interfacename }}</td>
+                            <td>
+                                {% if inf.interfacespeed and inf.interfacespeed != '0' %}
+                                    {{ (inf.interfacespeed|int / 1000000)|int }}M
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if inf.is_monitored == 1 %}
+                                    <span class="badge bg-success-subtle text-success border"><i class="bi bi-check-circle-fill"></i> Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-dash-circle"></i> Off</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                {% if inf.interfacestatus_admin == '1' %}
+                                    <span class="badge bg-success-subtle text-success border">Up</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border">Down</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if inf.interfacestatus == '1' %}
+                                    <span class="badge bg-success-subtle text-success border">Up</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border">Down</span>
+                                {% endif %}
+                            </td>
+                            <td class="small d-none d-md-table-cell">{{ inf.interfaceinput|int }}</td>
+                            <td class="small d-none d-md-table-cell">{{ inf.interfaceoutput|int }}</td>
+                            <td class="small {% if inf.interfaceerror > 0 %}text-danger fw-bold{% endif %}">{{ inf.interfaceerror|int }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                No interface metrics recorded for this device.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const ctx = document.getElementById('metricsChart').getContext('2d');
+    const cpuLabels = {{ chart_labels | tojson }};
+    const cpuData = {{ chart_cpu | tojson }};
+    const memData = {{ chart_mem | tojson }};
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: cpuLabels.length ? cpuLabels : ['Current'],
+            datasets: [
+                {
+                    label: 'CPU Load (%)',
+                    data: cpuData.length ? cpuData : [{{ device.sys_cpu_load }}],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Memory Used (MB)',
+                    data: memData.length ? memData : [{{ device.sys_memory_use }}],
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Servers | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-server text-success"></i> Manage Servers</h4>
+        <p class="text-muted small mb-0">Register Windows/Linux hosts for resource utilization tracking</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#addServerModal">
+            <i class="bi bi-plus-lg"></i> Add New Server
+        </button>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+        <span class="small fw-bold text-muted"><i class="bi bi-hdd-rack"></i> Monitored Host List ({{ servers|length }})</span>
+        <span class="table-scroll-hint"><i class="bi bi-arrow-left-right"></i> เลื่อนดูข้อมูล</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Server Name</th>
+                        <th class="d-none d-md-table-cell">Community String</th>
+                        <th>Status</th>
+                        <th class="d-none d-sm-table-cell">Description</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if servers %}
+                        {% for srv in servers %}
+                        <tr>
+                            <td><code>{{ srv.ipaddress }}</code></td>
+                            <td class="fw-bold">{{ srv.sys_name or 'Unnamed Server' }}</td>
+                            <td class="d-none d-md-table-cell"><code>{{ srv.community }}</code></td>
+                            <td>
+                                {% if srv.status == 1 %}
+                                    <span class="badge bg-success">UP</span>
+                                {% else %}
+                                    <span class="badge bg-danger">DOWN</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-sm-table-cell small text-muted">{{ srv.sys_description or '-' }}</td>
+                            <td class="text-end">
+                                <form action="/admin/servers/delete" method="post" class="d-inline" onsubmit="return confirm('Delete server {{ srv.ipaddress }}?');">
+                                    <input type="hidden" name="ipaddress" value="{{ srv.ipaddress }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">No servers found.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Server -->
+<div class="modal fade" id="addServerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Server Host</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/servers/add" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Server IP Address <span class="text-danger">*</span></label>
+                        <input type="text" name="ipaddress" class="form-control" placeholder="e.g. 192.168.1.10" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Server Name</label>
+                        <input type="text" name="sys_name" class="form-control" placeholder="e.g. Web-Server-Production">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">SNMP Community <span class="text-danger">*</span></label>
+                        <input type="text" name="community" class="form-control" value="public" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Description</label>
+                        <input type="text" name="sys_description" class="form-control" placeholder="e.g. Linux Ubuntu 22.04 LTS">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Save Server</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

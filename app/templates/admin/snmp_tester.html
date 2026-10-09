@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Live SNMP OID Tester | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-search text-info"></i> Live SNMP OID Tester & Probe
+        </h4>
+        <p class="text-muted small mb-0">Test, verify, and discover SNMP OIDs and MIB objects on network devices in real time</p>
+    </div>
+    <a href="/admin/oid-profiles" class="btn btn-outline-secondary shadow-sm">
+        <i class="bi bi-cpu"></i> View MIB Profiles
+    </a>
+</div>
+
+<!-- Tester Input Card -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3 fw-bold">
+        <i class="bi bi-terminal text-primary"></i> Probe Parameters
+    </div>
+    <div class="card-body">
+        <form action="/admin/snmp-tester/query" method="post" id="testerForm">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Quick Select Device</label>
+                    <select class="form-select" id="devicePicker" onchange="applyDeviceSelection(this)">
+                        <option value="">-- Manual Host Entry --</option>
+                        {% for dev in devices %}
+                        <option value="{{ dev.ipaddress }}" data-community="{{ dev.community }}" {% if query_params and query_params.host == dev.ipaddress %}selected{% endif %}>
+                            {{ dev.sys_name or 'Device' }} ({{ dev.ipaddress }}) [{{ dev.manufacturer }}]
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Target IP / Hostname <span class="text-danger">*</span></label>
+                    <input type="text" name="host" id="targetHost" class="form-control" placeholder="192.168.1.1" value="{{ query_params.host if query_params else '' }}" required>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Community <span class="text-danger">*</span></label>
+                    <input type="text" name="community" id="targetCommunity" class="form-control" value="{{ query_params.community if query_params else 'public' }}" required>
+                </div>
+
+                <div class="col-md-1">
+                    <label class="form-label small fw-semibold">Port</label>
+                    <input type="number" name="port" class="form-control" value="{{ query_params.port if query_params else 161 }}" required>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">SNMP Method</label>
+                    <select name="mode" class="form-select">
+                        <option value="get" {% if query_params and query_params.mode == 'get' %}selected{% endif %}>GET (Single OID)</option>
+                        <option value="walk" {% if query_params and query_params.mode == 'walk' %}selected{% endif %}>WALK (Subtree Table)</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label small fw-semibold">SNMP OID <span class="text-danger">*</span></label>
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <div class="input-group flex-grow-1">
+                            <span class="input-group-text font-monospace bg-light d-none d-sm-inline">.</span>
+                            <input type="text" name="oid" id="targetOid" class="form-control font-monospace" placeholder="1.3.6.1.2.1.1.1.0" value="{{ query_params.oid if query_params else '1.3.6.1.2.1.1.1.0' }}" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold text-nowrap">
+                            <i class="bi bi-play-fill"></i> Execute Probe
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="col-12 mt-2">
+                    <div class="small fw-semibold text-muted mb-2"><i class="bi bi-lightning-charge text-warning"></i> Quick OID Presets:</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.2.1.1.1.0', 'get')">SysDescr (MIB-II)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.2.1.1.3.0', 'get')">SysUptime (MIB-II)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.4.1.9.9.109.1.1.1.1.8.1', 'get')">Cisco CPU 5-min</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.4.1.14988.1.1.1.3.1.1.0', 'get')">MikroTik CPU</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.4.1.2011.6.3.4.1.2.0.0.0', 'get')">Huawei CPU</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.4.1.2021.10.1.3.1', 'get')">Linux 1-min Load</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.4.1.12356.101.4.1.1.0', 'get')">Fortinet CPU</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.2.1.2.2.1.2', 'walk')">Interface Walk (.2.2.1.2)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setOid('1.3.6.1.2.1.4.20.1.1', 'walk')">IP Address Walk</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Probe Results Area -->
+{% if probe_result %}
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-activity text-success"></i> SNMP Probe Results</h6>
+            {% if probe_result.success %}
+                <span class="badge bg-success-subtle text-success border">SUCCESS</span>
+            {% else %}
+                <span class="badge bg-danger-subtle text-danger border">PROBE FAILED</span>
+            {% endif %}
+        </div>
+        <div class="text-muted small">
+            Response Latency: <strong class="{% if probe_result.success %}text-success{% else %}text-danger{% endif %}">{{ probe_result.elapsed_ms }} ms</strong>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if not probe_result.success %}
+            <div class="alert alert-danger mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-exclamation-octagon-fill fs-5"></i>
+                <div>
+                    <strong>SNMP Communication Error:</strong> {{ probe_result.error }}
+                    <div class="small text-muted mt-1">Please check IP reachability, UDP port 161, and Community String permissions (Read-Only access).</div>
+                </div>
+            </div>
+        {% else %}
+            {% if probe_result.results %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Object Identifier (OID)</th>
+                                <th>ASN.1 Type</th>
+                                <th>Raw / Formatted Value</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in probe_result.results %}
+                            <tr>
+                                <td class="text-muted">{{ loop.index }}</td>
+                                <td><code class="text-primary fw-bold">{{ item.oid }}</code></td>
+                                <td><span class="badge bg-secondary-subtle text-secondary border">{{ item.type }}</span></td>
+                                <td class="font-monospace text-break">{{ item.value }}</td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="openAddSensorModal('{{ item.oid }}', '{{ item.value }}')">
+                                        <i class="bi bi-plus-circle"></i> Add as Sensor
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-muted text-center py-3">No SNMP variables returned for this OID query.</div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal: Quick Add As Custom Sensor -->
+<div class="modal fade" id="addSensorFromProbeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-plus-circle text-success"></i> Add OID as Custom Sensor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="sensorForm" method="post" action="">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Target Network Device <span class="text-danger">*</span></label>
+                        <select class="form-select" id="modalDeviceIp" onchange="updateSensorFormAction(this.value)" required>
+                            <option value="">-- Choose Target Device --</option>
+                            {% for dev in devices %}
+                            <option value="{{ dev.ipaddress }}" {% if query_params and query_params.host == dev.ipaddress %}selected{% endif %}>
+                                {{ dev.sys_name or 'Device' }} ({{ dev.ipaddress }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Sensor Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Core Temp, BGP Peers, Fan Speed" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">SNMP OID <span class="text-danger">*</span></label>
+                        <input type="text" name="oid" id="modalOid" class="form-control font-monospace" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Measurement Unit</label>
+                        <input type="text" name="unit" class="form-control" placeholder="e.g. °C, RPM, %, Users, bps">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Save Sensor to Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function applyDeviceSelection(select) {
+        const option = select.options[select.selectedIndex];
+        if (option.value) {
+            document.getElementById('targetHost').value = option.value;
+            const comm = option.getAttribute('data-community');
+            if (comm) {
+                document.getElementById('targetCommunity').value = comm;
+            }
+        }
+    }
+
+    function setOid(oid, mode) {
+        document.getElementById('targetOid').value = oid;
+        const modeSelect = document.querySelector('select[name="mode"]');
+        if (modeSelect) modeSelect.value = mode;
+    }
+
+    function openAddSensorModal(oid, previewVal) {
+        document.getElementById('modalOid').value = oid;
+        const devIpSelect = document.getElementById('modalDeviceIp');
+        if (devIpSelect.value) {
+            updateSensorFormAction(devIpSelect.value);
+        } else {
+            const hostVal = document.getElementById('targetHost').value;
+            if (hostVal) {
+                for (let i = 0; i < devIpSelect.options.length; i++) {
+                    if (devIpSelect.options[i].value === hostVal) {
+                        devIpSelect.selectedIndex = i;
+                        updateSensorFormAction(hostVal);
+                        break;
+                    }
+                }
+            }
+        }
+        const modal = new bootstrap.Modal(document.getElementById('addSensorFromProbeModal'));
+        modal.show();
+    }
+
+    function updateSensorFormAction(ip) {
+        const form = document.getElementById('sensorForm');
+        if (ip) {
+            form.action = `/admin/devices/${ip}/sensors/add`;
+        }
+    }
+
+    // Initialize action on load if device is selected
+    document.addEventListener("DOMContentLoaded", function() {
+        const devIpSelect = document.getElementById('modalDeviceIp');
+        if (devIpSelect && devIpSelect.value) {
+            updateSensorFormAction(devIpSelect.value);
+        }
+    });
+</script>
+{% endblock %}

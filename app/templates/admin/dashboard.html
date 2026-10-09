@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-gear-fill text-warning"></i> System Administration</h3>
+        <p class="text-muted small mb-0">Manage network devices, monitored servers, services & access control</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 text-center p-3">
+            <div class="card-body">
+                <i class="bi bi-router text-primary fs-1 mb-2"></i>
+                <h5 class="fw-bold">Network Devices</h5>
+                <p class="text-muted small">Configure routers, switches and SNMP community strings</p>
+                <a href="/admin/devices" class="btn btn-outline-primary btn-sm w-100">Manage Devices</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 text-center p-3">
+            <div class="card-body">
+                <i class="bi bi-server text-success fs-1 mb-2"></i>
+                <h5 class="fw-bold">Servers</h5>
+                <p class="text-muted small">Add or edit physical and virtual servers for storage/CPU monitoring</p>
+                <a href="/admin/servers" class="btn btn-outline-success btn-sm w-100">Manage Servers</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 text-center p-3">
+            <div class="card-body">
+                <i class="bi bi-activity text-info fs-1 mb-2"></i>
+                <h5 class="fw-bold">Services</h5>
+                <p class="text-muted small">Configure port checks (HTTP, DNS, Mail) and ping targets</p>
+                <a href="/admin/services" class="btn btn-outline-info btn-sm w-100">Manage Services</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 text-center p-3">
+            <div class="card-body">
+                <i class="bi bi-people-fill text-danger fs-1 mb-2"></i>
+                <h5 class="fw-bold">User Accounts</h5>
+                <p class="text-muted small">Manage operators and admin accounts with Bcrypt hashing</p>
+                <a href="/admin/users" class="btn btn-outline-danger btn-sm w-100">Manage Users</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100 p-3 border-start border-4 border-primary">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-cpu text-primary me-2"></i> Vendor MIB & OID Profiles</h5>
+                    <p class="text-muted small mb-0">Configure CPU/Memory OID profiles for Cisco, MikroTik, Huawei, Linux & Fortinet</p>
+                </div>
+                <a href="/admin/oid-profiles" class="btn btn-primary btn-sm px-3">Manage Profiles</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100 p-3 border-start border-4 border-info">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-search text-info me-2"></i> Live SNMP OID Tester</h5>
+                    <p class="text-muted small mb-0">Test and probe single OIDs or perform SNMP Walks on hardware with 1-click sensor creation</p>
+                </div>
+                <a href="/admin/snmp-tester" class="btn btn-info text-white btn-sm px-3">Open Tester</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-3 fw-bold">
+        <i class="bi bi-shield-check text-success"></i> Security Status & Modernization Report
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border">
+                    <h6 class="fw-bold text-success"><i class="bi bi-check-circle-fill"></i> Security Hardening Implemented</h6>
+                    <ul class="mb-0 small text-muted">
+                        <li><strong>SQL Injection:</strong> Completely eliminated via SQLAlchemy ORM parameterized queries.</li>
+                        <li><strong>Password Hashing:</strong> Bcrypt with strong salt rounds replaces plaintext storage.</li>
+                        <li><strong>Command Injection:</strong> Replaced vulnerable <code>exec(ping)</code> with safe native array subprocess calls.</li>
+                        <li><strong>Cross-Site Scripting:</strong> Automatic HTML escaping enabled via Jinja2 engine.</li>
+                        <li><strong>Cross-Site Request Forgery:</strong> Session integrity protected with encrypted HttpOnly cookie tokens.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border">
+                    <h6 class="fw-bold text-primary"><i class="bi bi-cpu"></i> Python Runtime & Engine</h6>
+                    <ul class="mb-0 small text-muted">
+                        <li><strong>Web Framework:</strong> FastAPI (Asynchronous high-performance engine)</li>
+                        <li><strong>Poller Scheduler:</strong> Background Async/APScheduler worker thread</li>
+                        <li><strong>Network Probes:</strong> Native Python Sockets + PySNMP-Lextudio</li>
+                        <li><strong>Legacy Backup:</strong> Original PHP files preserved in <code>/Old_PHP</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

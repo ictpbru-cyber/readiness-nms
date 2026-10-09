@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row g-2 g-sm-3 mb-4">
+    <!-- KPI Card: Network Devices -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-2 p-sm-3 text-primary me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-router fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Network Devices</div>
+                    <div class="h3 fw-bold mb-0 kpi-value">{{ devices|length }}</div>
+                    <div class="small mt-1 kpi-subtext">
+                        <span class="text-success fw-semibold"><i class="bi bi-arrow-up-circle"></i> {{ dev_up_count }}</span>
+                        <span class="text-danger fw-semibold ms-1"><i class="bi bi-arrow-down-circle"></i> {{ dev_down_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Card: Servers -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle bg-success bg-opacity-10 p-2 p-sm-3 text-success me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-server fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Servers</div>
+                    <div class="h3 fw-bold mb-0 kpi-value">{{ servers|length }}</div>
+                    <div class="small mt-1 kpi-subtext">
+                        <span class="text-success fw-semibold"><i class="bi bi-arrow-up-circle"></i> {{ srv_up_count }}</span>
+                        <span class="text-danger fw-semibold ms-1"><i class="bi bi-arrow-down-circle"></i> {{ srv_down_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Card: Services -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle bg-info bg-opacity-10 p-2 p-sm-3 text-info me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-activity fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Services</div>
+                    <div class="h3 fw-bold mb-0 kpi-value">{{ services|length }}</div>
+                    <div class="small mt-1 kpi-subtext">
+                        <span class="text-success fw-semibold"><i class="bi bi-check-circle"></i> {{ svc_up_count }}</span>
+                        <span class="text-danger fw-semibold ms-1"><i class="bi bi-x-circle"></i> {{ svc_down_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Card: Health Score -->
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-2 p-sm-3 d-flex align-items-center">
+                <div class="rounded-circle bg-warning bg-opacity-10 p-2 p-sm-3 text-warning me-2 me-sm-3 kpi-icon-box d-flex align-items-center justify-content-center">
+                    <i class="bi bi-shield-check fs-3 fs-sm-2"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-muted small fw-medium text-truncate kpi-title">Availability</div>
+                    <div class="h3 fw-bold mb-0 kpi-value">{{ health_pct }}%</div>
+                    <div class="small text-muted mt-1 kpi-subtext text-truncate">Live score</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Network Devices Overview -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0 fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-router text-primary"></i> Network Devices Status
+                </h6>
+                <a href="/network" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Device Name</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th>CPU Load</th>
+                                <th>Uptime</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if devices %}
+                                {% for dev in devices %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <a href="/device/{{ dev.ipaddress }}" class="fw-semibold text-decoration-none">
+                                            {{ dev.sys_name or 'Unknown Device' }}
+                                        </a>
+                                        <div class="text-muted small text-truncate" style="max-width: 250px;">
+                                            {{ dev.sys_description }}
+                                        </div>
+                                    </td>
+                                    <td><code>{{ dev.ipaddress }}</code></td>
+                                    <td>
+                                        {% if dev.status == 1 %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                <i class="bi bi-check-circle-fill"></i> UP
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                                <i class="bi bi-x-circle-fill"></i> DOWN
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if dev.status == 1 %}
+                                            <span class="badge bg-secondary">{{ dev.sys_cpu_load }}%</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small text-muted">{{ dev.sys_uptime or '-' }}</td>
+                                    <td class="text-end">
+                                        <a href="/device/{{ dev.ipaddress }}" class="btn btn-sm btn-light border">
+                                            <i class="bi bi-eye"></i> Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                                        No network devices registered yet.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Services Status Panel -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0 fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-activity text-info"></i> Critical Services
+                </h6>
+                <a href="/services" class="btn btn-sm btn-outline-info">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% if services %}
+                        {% for svc in services[:6] %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                            <div>
+                                <div class="fw-semibold">{{ svc.service_name or svc.server }}</div>
+                                <div class="text-muted small"><code>{{ svc.server }}:{{ svc.port }}</code></div>
+                            </div>
+                            <div class="text-end">
+                                {% if svc.status == 'respond' %}
+                                    <span class="badge bg-success mb-1">Active</span>
+                                    <div class="small text-muted">{{ svc.responded_ms }} ms</div>
+                                {% else %}
+                                    <span class="badge bg-danger mb-1">Failed</span>
+                                    <div class="small text-danger">No response</div>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item text-center text-muted py-4">
+                            No services monitored.
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

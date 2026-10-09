@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Vendor MIB & OID Profiles | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-cpu text-primary"></i> Vendor MIB & OID Profiles
+        </h4>
+        <p class="text-muted small mb-0">Configure standard & enterprise OID profiles for multi-vendor network devices</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="/admin/snmp-tester" class="btn btn-outline-info shadow-sm flex-grow-1 flex-md-grow-0">
+            <i class="bi bi-search"></i> <span class="d-none d-sm-inline">Live</span> SNMP Tester
+        </a>
+        <button type="button" class="btn btn-primary shadow-sm flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#addProfileModal">
+            <i class="bi bi-plus-lg"></i> Add New Profile
+        </button>
+    </div>
+</div>
+
+<!-- Info Cards: Enterprise OID Reference -->
+<div class="row g-2 g-sm-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-primary">
+            <div class="card-body p-2 p-sm-3">
+                <div class="d-flex align-items-center justify-content-between mb-1 mb-sm-2">
+                    <span class="fw-bold small">Cisco Systems</span>
+                    <span class="badge bg-primary-subtle text-primary">PEN: 9</span>
+                </div>
+                <div class="small text-muted font-monospace text-truncate mb-1" title="1.3.6.1.4.1.9.9.109...">CPU: .9.9.109...</div>
+                <div class="small text-muted font-monospace text-truncate" title="1.3.6.1.4.1.9.9.48...">MEM: .9.9.48...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-info">
+            <div class="card-body p-2 p-sm-3">
+                <div class="d-flex align-items-center justify-content-between mb-1 mb-sm-2">
+                    <span class="fw-bold small">MikroTik</span>
+                    <span class="badge bg-info-subtle text-info">PEN: 14988</span>
+                </div>
+                <div class="small text-muted font-monospace text-truncate mb-1" title="1.3.6.1.4.1.14988.1.1.1.3...">CPU: .14988...</div>
+                <div class="small text-muted font-monospace text-truncate" title="1.3.6.1.2.1.25.2.3.1.6...">MEM: .25.2.3...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-danger">
+            <div class="card-body p-2 p-sm-3">
+                <div class="d-flex align-items-center justify-content-between mb-1 mb-sm-2">
+                    <span class="fw-bold small">Huawei</span>
+                    <span class="badge bg-danger-subtle text-danger">PEN: 2011</span>
+                </div>
+                <div class="small text-muted font-monospace text-truncate mb-1" title="1.3.6.1.4.1.2011.6.3.4.1.2...">CPU: .2011.6.3...</div>
+                <div class="small text-muted font-monospace text-truncate" title="1.3.6.1.4.1.2011.6.3.5.1.1...">MEM: .2011.6.3...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-3 h-100 border-start border-4 border-warning">
+            <div class="card-body p-2 p-sm-3">
+                <div class="d-flex align-items-center justify-content-between mb-1 mb-sm-2">
+                    <span class="fw-bold small">Linux / Fortinet</span>
+                    <span class="badge bg-warning-subtle text-warning">Multi</span>
+                </div>
+                <div class="small text-muted font-monospace text-truncate mb-1" title="Linux UCD: 1.3.6.1.4.1.2021...">UCD: .2021...</div>
+                <div class="small text-muted font-monospace text-truncate" title="FortiGate: 1.3.6.1.4.1.12356...">FG: .12356...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Profiles Table -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+        <span class="small fw-bold text-muted"><i class="bi bi-list-check text-primary"></i> Profiles ({{ profiles|length }})</span>
+        <span class="table-scroll-hint"><i class="bi bi-arrow-left-right"></i> เลื่อนดูข้อมูล</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width: 100px;">Vendor</th>
+                        <th style="min-width: 140px;">Profile Name</th>
+                        <th>CPU Load OID</th>
+                        <th class="d-none d-md-table-cell">Memory Used OID</th>
+                        <th class="d-none d-lg-table-cell">Memory Free OID</th>
+                        <th class="d-none d-xl-table-cell">Description</th>
+                        <th class="text-end" style="min-width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if profiles %}
+                        {% for prof in profiles %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-primary-subtle text-primary border fw-semibold">{{ prof.vendor }}</span>
+                            </td>
+                            <td class="fw-bold">{{ prof.name }}</td>
+                            <td>
+                                {% if prof.oid_cpu %}
+                                    <code class="small text-dark">{{ prof.oid_cpu }}</code>
+                                {% else %}
+                                    <span class="text-muted small">Not set</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                {% if prof.oid_mem_used %}
+                                    <code class="small text-dark">{{ prof.oid_mem_used }}</code>
+                                {% else %}
+                                    <span class="text-muted small">Not set</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-lg-table-cell">
+                                {% if prof.oid_mem_free %}
+                                    <code class="small text-dark">{{ prof.oid_mem_free }}</code>
+                                {% else %}
+                                    <span class="text-muted small">Not set</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none d-xl-table-cell small text-muted">{{ prof.description or '-' }}</td>
+                            <td class="text-end text-nowrap">
+                                <a href="/admin/snmp-tester?oid={{ prof.oid_cpu or prof.oid_mem_used or '1.3.6.1.2.1.1.1.0' }}" class="btn btn-sm btn-outline-info me-1" title="Test this OID">
+                                    <i class="bi bi-play-fill"></i> <span class="d-none d-sm-inline">Test</span>
+                                </a>
+                                <form action="/admin/oid-profiles/delete" method="post" class="d-inline" onsubmit="return confirm('Delete OID profile {{ prof.name }}?');">
+                                    <input type="hidden" name="profile_id" value="{{ prof.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Profile">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No OID profiles found.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add New Profile -->
+<div class="modal fade" id="addProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-plus-circle text-primary"></i> Add / Update MIB Profile
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/oid-profiles/add" method="post">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Vendor Brand <span class="text-danger">*</span></label>
+                            <input type="text" name="vendor" class="form-control" placeholder="e.g. Cisco, MikroTik, Huawei, Juniper" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Profile Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. MikroTik RouterOS v7" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">CPU Utilization OID</label>
+                            <input type="text" name="oid_cpu" class="form-control font-monospace" placeholder="e.g. 1.3.6.1.4.1.14988.1.1.1.3.1.1.0">
+                            <div class="form-text small">OID returning an integer or gauge (0 - 100%) for CPU load.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Memory Used OID</label>
+                            <input type="text" name="oid_mem_used" class="form-control font-monospace" placeholder="e.g. 1.3.6.1.2.1.25.2.3.1.6.1">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Memory Free OID</label>
+                            <input type="text" name="oid_mem_free" class="form-control font-monospace" placeholder="e.g. 1.3.6.1.4.1.9.9.48.1.1.1.6.1">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Description / Notes</label>
+                            <input type="text" name="description" class="form-control" placeholder="e.g. Standard MIB for RouterBOARD switches & routers">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save MIB Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

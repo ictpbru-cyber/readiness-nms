@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Security Audit & Vulnerability Scanner | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-shield-lock-fill text-danger"></i> Security Audit</h3>
+        <p class="text-muted small mb-0">Automated posture evaluation: Credentials, SNMP hardening & security posture</p>
+    </div>
+    <div>
+        <form action="/security-audit/scan" method="post" class="d-inline">
+            <button type="submit" class="btn btn-danger d-flex align-items-center justify-content-center gap-1 shadow-sm w-100">
+                <i class="bi bi-shield-shaded"></i> Run Security Scan
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Score and Summary Cards -->
+<div class="row g-2 g-sm-3 mb-4">
+    <!-- Security Score -->
+    <div class="col-12 col-md-4">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body d-flex align-items-center p-3">
+                <div class="rounded-circle {% if audit.score >= 80 %}bg-success{% elif audit.score >= 60 %}bg-warning{% else %}bg-danger{% endif %} bg-opacity-10 p-2 p-sm-3 me-3 text-center d-flex align-items-center justify-content-center" style="width: 58px; height: 58px; min-width: 58px;">
+                    <span class="h4 fw-bold {% if audit.score >= 80 %}text-success{% elif audit.score >= 60 %}text-warning{% else %}text-danger{% endif %} mb-0">{{ audit.score }}</span>
+                </div>
+                <div>
+                    <div class="text-muted small fw-medium">Health Score</div>
+                    <div class="h5 fw-bold mb-0">
+                        {% if audit.score >= 80 %}
+                            <span class="text-success">Good Posture</span>
+                        {% elif audit.score >= 60 %}
+                            <span class="text-warning">Needs Attention</span>
+                        {% else %}
+                            <span class="text-danger">High Risk</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted">Scale of 0 - 100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Critical Findings -->
+    <div class="col-6 col-md-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body text-center p-3">
+                <div class="text-muted small fw-medium">Critical</div>
+                <div class="h3 fw-bold text-danger mb-0">{{ audit.critical_count }}</div>
+                <div class="small text-muted">Immediate fix</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- High Risk -->
+    <div class="col-6 col-md-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body text-center p-3">
+                <div class="text-muted small fw-medium">High Risk</div>
+                <div class="h3 fw-bold text-warning mb-0">{{ audit.high_count }}</div>
+                <div class="small text-muted">Dangerous defaults</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medium / Low -->
+    <div class="col-6 col-md-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body text-center p-3">
+                <div class="text-muted small fw-medium">Med / Low</div>
+                <div class="h3 fw-bold text-info mb-0">{{ audit.medium_count + audit.low_count }}</div>
+                <div class="small text-muted">Warnings</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Passed Checks -->
+    <div class="col-6 col-md-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body text-center p-3">
+                <div class="text-muted small fw-medium">Passed</div>
+                <div class="h3 fw-bold text-success mb-0">{{ audit.passed_count }}</div>
+                <div class="small text-muted">Verified</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Findings List -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
+        <span class="small fw-bold text-muted"><i class="bi bi-list-check text-primary"></i> Vulnerability Audit Findings & Remediation</span>
+        <span class="badge bg-secondary">{{ audit.findings|length }} Checks</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+            {% for item in audit.findings %}
+            <div class="list-group-item p-3">
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-1 mb-2">
+                    <div class="d-flex flex-wrap align-items-center gap-1">
+                        {% if item.severity == 'CRITICAL' %}
+                            <span class="badge bg-danger px-2 py-1"><i class="bi bi-exclamation-octagon-fill"></i> CRITICAL</span>
+                        {% elif item.severity == 'HIGH' %}
+                            <span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-exclamation-triangle-fill"></i> HIGH</span>
+                        {% elif item.severity == 'MEDIUM' %}
+                            <span class="badge bg-info text-dark px-2 py-1"><i class="bi bi-info-circle-fill"></i> MEDIUM</span>
+                        {% elif item.severity == 'LOW' %}
+                            <span class="badge bg-secondary px-2 py-1"><i class="bi bi-info-circle"></i> LOW</span>
+                        {% else %}
+                            <span class="badge bg-success px-2 py-1"><i class="bi bi-check-circle-fill"></i> PASSED</span>
+                        {% endif %}
+
+                        <span class="badge bg-light text-secondary border">{{ item.category }}</span>
+                        <span class="fw-bold text-dark ms-1">{{ item.title }}</span>
+                    </div>
+                    <span class="small text-muted text-break">Target: <code>{{ item.target }}</code></span>
+                </div>
+
+                <p class="text-secondary small mb-2">{{ item.description }}</p>
+
+                <div class="p-2 rounded bg-light border small">
+                    <strong class="text-dark"><i class="bi bi-wrench"></i> Recommended Remediation:</strong>
+                    <span class="text-muted">{{ item.recommendation }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- OWASP Top 10 Comparison Card -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center fw-bold">
+        <span class="small fw-bold text-muted"><i class="bi bi-shield-check text-success"></i> OWASP Top 10 Readiness Matrix</span>
+        <span class="table-scroll-hint"><i class="bi bi-arrow-left-right"></i> เลื่อนดูข้อมูล</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>OWASP Category</th>
+                        <th>Legacy PHP Status</th>
+                        <th>Readiness 2.0 (Python) Defense</th>
+                        <th>Protection Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-bold">A01: Broken Access Control</td>
+                        <td class="text-danger small">Unchecked GET parameters delete users/devices</td>
+                        <td class="small">Session Role Checks (ADMIN) on all modifying POST endpoints</td>
+                        <td><span class="badge bg-success">Mitigated</span></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">A02: Cryptographic Failures</td>
+                        <td class="text-danger small">Plaintext passwords stored in MySQL database</td>
+                        <td class="small">Bcrypt password hashing with salt rounds</td>
+                        <td><span class="badge bg-success">Mitigated</span></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">A03: Injection (SQL & OS)</td>
+                        <td class="text-danger small">String concatenation SQL & <code>exec(ping)</code></td>
+                        <td class="small">SQLAlchemy ORM + Array argument subprocess (no shell)</td>
+                        <td><span class="badge bg-success">Mitigated</span></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">A05: Security Misconfiguration</td>
+                        <td class="text-danger small">Hardcoded DB passwords in source code</td>
+                        <td class="small">Centralized <code>.env</code> file with automated audit checks</td>
+                        <td><span class="badge bg-success">Mitigated</span></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">A07: Identification & Auth</td>
+                        <td class="text-danger small">No session protection or timeout</td>
+                        <td class="small">Encrypted signed cookies with HttpOnly and SameSite</td>
+                        <td><span class="badge bg-success">Mitigated</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
